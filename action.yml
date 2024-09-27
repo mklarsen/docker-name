@@ -1,0 +1,66 @@
+name: "Prepare Docker Image Name(s)"
+description: "return docker image name(s) for ghcr and/or harbor"
+
+inputs:
+  return-github-name:
+    description: "Retur github image-name true/false"
+    required: false
+    default: "true"
+
+  return-harbor-name:
+    description: "Retur harbor image-name true/false"
+    required: false
+    default: "false"
+
+  harbor-project-name:
+    description: "harbor project name"
+    required: false
+    default: "SomeName"
+
+outputs:
+  ghcr_imagename:
+    description: "Github image and tag name"
+    value: ${{ steps.imagenames.outputs.ghcr_imagename }}
+  harbor_imagename:
+    description: "Harbor image and tag name"
+    value: ${{ steps.imagenames.outputs.harbor_imagename }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Report action version
+      shell: bash
+      run: |
+        echo 'Docker-name action: v.1.0.7'  >> $GITHUB_STEP_SUMMARY
+
+    - name: Set Docker image names for Container Registry(s
+      shell: bash
+      id: imagenames
+      run: |
+        repo=${{ github.repository }}
+        org_name=${repo%/*}
+        repo_name=${repo##*/}
+        echo "org_name=${org_name,,}" >> $GITHUB_ENV
+        echo "repo_name=${repo_name,,}" >> $GITHUB_ENV
+
+        if [[ "${{ inputs.return-github-name }}" == "true" ]]; then
+          echo "ghcr_imagename=ghcr.io/${org_name,,}/${repo_name}:${GITHUB_SHA:0:8}" >> $GITHUB_OUTPUT
+          echo "ghcr_imagename=ghcr.io/${org_name,,}/${repo_name}:${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+        fi
+        if [[ "${{ inputs.return-harbor-name }}" == "true" ]]; then
+          echo "harbor_imagename=harbor.DOMAIN.io/${{ inputs.harbor-project-name }}/${repo_name}:${GITHUB_SHA:0:8}" >> $GITHUB_OUTPUT
+          echo "harbor_imagename=harbor.DOMAIN.io/${{ inputs.harbor-project-name }}/${repo_name}:${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+        fi
+      ## Use GITHUB_OUTPUT between jobs, and GITHUB_ENV within the same job      
+
+    - name: Return image name(s)
+      shell: bash
+      run: |
+        if [[ "${{ inputs.return-github-name }}" == "true" ]]; then
+          echo "${{ env.ghcr_imagename }} " >> $GITHUB_STEP_SUMMARY
+        fi
+        if [[ "${{ inputs.return-harbor-name }}" == "true" ]]; then
+          echo "${{ env.harbor_imagename }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        env
+        
